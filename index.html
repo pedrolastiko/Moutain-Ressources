@@ -115,12 +115,76 @@
     footer a {
       color: inherit;
     }
+
+    .search {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.35);
+      padding: 18px 20px;
+      border-radius: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .search label {
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+
+    .search-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .search input[type="search"] {
+      flex: 1 1 260px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      font-size: 1rem;
+      background: rgba(248, 250, 252, 0.95);
+      color: #0f172a;
+    }
+
+    .search button {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      background: #f8fafc;
+      color: #0f172a;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .search button:hover,
+    .search button:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+    }
+
+    .search p {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Panorama des boutiques de montagne</h1>
     <p>Explorez en un clin d'œil une sélection de boutiques dédiées aux sports de montagne. Chaque tuile propose un aperçu du site et vous redirige vers la boutique correspondante.</p>
+    <div class="search">
+      <label for="site-search">Rechercher un site ou un produit</label>
+      <div class="search-controls">
+        <input id="site-search" type="search" placeholder="Ex. chaussures de randonnée, Alpin Store..." autocomplete="off">
+        <button type="button" id="clear-search">Effacer</button>
+        <button type="button" id="web-search">Rechercher sur tous les sites</button>
+      </div>
+      <p id="search-info" role="status" aria-live="polite">Tapez pour filtrer les boutiques ou lancer une recherche web ciblée.</p>
+    </div>
   </header>
 
   <main>
@@ -371,5 +435,65 @@
   <footer>
     <p>Captures dynamiques fournies par <a href="https://image.thum.io/" target="_blank" rel="noopener">thum.io</a>. Cliquez sur une tuile pour visiter la boutique correspondante.</p>
   </footer>
+
+  <script>
+    const searchInput = document.querySelector('#site-search');
+    const clearButton = document.querySelector('#clear-search');
+    const webSearchButton = document.querySelector('#web-search');
+    const cards = Array.from(document.querySelectorAll('.card'));
+    const searchInfo = document.querySelector('#search-info');
+
+    const uniqueHosts = Array.from(
+      new Set(cards.map((card) => new URL(card.href).hostname))
+    );
+
+    const updateInfo = (visibleCount, query) => {
+      if (!query) {
+        searchInfo.textContent = 'Tapez pour filtrer les boutiques ou lancer une recherche web ciblée.';
+        return;
+      }
+      searchInfo.textContent = `${visibleCount} boutique${visibleCount > 1 ? 's' : ''} correspondante${visibleCount > 1 ? 's' : ''} pour "${query}".`;
+    };
+
+    const filterCards = (query) => {
+      const normalized = query.trim().toLowerCase();
+      let visibleCount = 0;
+
+      cards.forEach((card) => {
+        const label = card.querySelector('span')?.textContent?.toLowerCase() ?? '';
+        const url = card.href.toLowerCase();
+        const matches = !normalized || label.includes(normalized) || url.includes(normalized);
+
+        card.style.display = matches ? 'flex' : 'none';
+        if (matches) {
+          visibleCount += 1;
+        }
+      });
+
+      updateInfo(visibleCount, normalized);
+    };
+
+    searchInput.addEventListener('input', (event) => {
+      filterCards(event.target.value);
+    });
+
+    clearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      filterCards('');
+      searchInput.focus();
+    });
+
+    webSearchButton.addEventListener('click', () => {
+      const query = searchInput.value.trim();
+      if (!query) {
+        searchInput.focus();
+        searchInfo.textContent = 'Ajoutez un mot-clé avant de lancer la recherche sur le web.';
+        return;
+      }
+      const siteQuery = uniqueHosts.map((host) => `site:${host}`).join(' OR ');
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${query} ${siteQuery}`)}`;
+      window.open(searchUrl, '_blank', 'noopener');
+    });
+  </script>
 </body>
 </html>
